@@ -5,6 +5,7 @@ import {
   BookOpen, Sparkles, Workflow, MessageSquare,
   Grid3x3, Globe, Network,
 } from 'lucide-react';
+
 import { cssVar, type ModuleKey } from '../../lib/colors';
 
 type Entry = {
@@ -27,9 +28,10 @@ const SECTIONS: Section[] = [
   {
     title: 'VIEWS',
     entries: [
-      { label: 'Command Center', icon: Grid3x3, colorKey: 'jarvis',  route: '/',              status: 'on' },
-      { label: 'Orbital View',   icon: Globe,   colorKey: 'forge',   route: '/orbital',       status: 'on' },
-      { label: 'Agent Network',  icon: Network, colorKey: 'cortex',  route: '/agent-network', status: 'on' },
+      { label: 'Command Center', icon: Grid3x3,  colorKey: 'jarvis',  route: '/',              status: 'on' },
+      { label: 'Orbital View',   icon: Globe,    colorKey: 'forge',   route: '/orbital',       status: 'on' },
+      { label: 'Agent Network',  icon: Network,  colorKey: 'cortex',  route: '/agent-network', status: 'on' },
+      { label: 'Brain Hub',      icon: Brain,    colorKey: 'vault',   route: '/brain',         status: 'on' },
     ],
   },
   {

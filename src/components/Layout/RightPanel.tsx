@@ -1,13 +1,9 @@
-import { useState } from 'react';
-import { AlertTriangle, Info, MessageSquare, Radio, Zap } from 'lucide-react';
+import { AlertTriangle, Info, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLiveMetric } from '../../hooks/useLiveMetric';
 import { useWsEvents } from '../../hooks/useWsEvents';
 import { fetchLogs, fetchAgents, fetchCrewJobs, type LogEntry } from '../../lib/apiLive';
-import { ChatArea } from '../Chat/ChatArea';
 import type { WsEvent } from '../../lib/ws';
-
-type Tab = 'chat' | 'events';
 
 type Event = {
   id: string | number;
@@ -26,195 +22,74 @@ const SEED: Event[] = [
 ];
 
 /**
- * RightPanel — tabbed: CHAT (default) | EVENTS
- *
- * CHAT tab   : embeds ChatArea directly — full streaming chat on the right.
- * EVENTS tab : 3-tier event source (WS → HTTP → mock seed) + QUICK STATS.
+ * RightPanel — Phase 7: 3-tier event source.
+ *   1. WebSocket  /ws/events    (real-time, preferred)
+ *   2. HTTP poll  /v1/logs      (fallback, every 4s)
+ *   3. Mock seed                (last resort if both empty)
  */
 export function RightPanel() {
-  const [tab, setTab] = useState<Tab>('chat');
-
   const ws = useWsEvents(50);
-  const { data: logsData }   = useLiveMetric(fetchLogs,      { intervalMs: 4000 });
-  const { data: agentsData } = useLiveMetric(fetchAgents,    { intervalMs: 8000 });
-  const { data: jobsData }   = useLiveMetric(fetchCrewJobs,  { intervalMs: 6000 });
+  const { data: logsData } = useLiveMetric(fetchLogs, { intervalMs: 4000 });
+  const { data: agentsData } = useLiveMetric(fetchAgents, { intervalMs: 8000 });
+  const { data: jobsData } = useLiveMetric(fetchCrewJobs, { intervalMs: 6000 });
 
-  const wsEvents   = mapWs(ws.events);
+  const wsEvents = mapWs(ws.events);
   const httpEvents = mapLogs(logsData?.logs ?? []);
 
   let events: Event[];
   let badge: 'WS LIVE' | 'HTTP LIVE' | 'MOCK';
   if (ws.connected && wsEvents.length > 0) {
-    events = wsEvents;  badge = 'WS LIVE';
+    events = wsEvents;
+    badge = 'WS LIVE';
   } else if (httpEvents.length > 0) {
-    events = httpEvents; badge = 'HTTP LIVE';
+    events = httpEvents;
+    badge = 'HTTP LIVE';
   } else {
-    events = SEED; badge = 'MOCK';
+    events = SEED;
+    badge = 'MOCK';
   }
 
-  const agents     = agentsData?.agents ?? [];
+  const agents = agentsData?.agents ?? [];
   const onlineAgents = agents.filter(a => a.status === 'online').length;
-  const jobs       = jobsData?.jobs ?? [];
+  const jobs = jobsData?.jobs ?? [];
   const activeJobs = jobs.filter(j => String(j.status).toLowerCase() === 'running').length;
-  const alerts     = events.filter(e => e.level !== 'info').length;
+  const alerts = events.filter(e => e.level !== 'info').length;
 
   return (
     <aside
       className="flex flex-col shrink-0 overflow-hidden"
       style={{
-        width: 400,
+        width: 280,
         background: 'var(--hud-bg-elev)',
         borderLeft: '1px solid var(--hud-border)',
       }}
     >
-      {/* ── Tab bar ──────────────────────────────── */}
-      <div
-        className="flex shrink-0"
-        style={{ borderBottom: '1px solid var(--hud-border)', background: 'rgba(0,0,0,0.25)' }}
-      >
-        <TabBtn
-          icon={MessageSquare}
-          label="JARVIS CHAT"
-          active={tab === 'chat'}
-          onClick={() => setTab('chat')}
-          color="var(--color-jarvis)"
-        />
-        <TabBtn
-          icon={Radio}
-          label="EVENTS"
-          active={tab === 'events'}
-          onClick={() => setTab('events')}
-          color="var(--color-security)"
-          badge={alerts > 0 ? String(alerts) : undefined}
-        />
+      <SectionHeader title="ALERTS & EVENTS" badge={badge} wsState={ws.state} />
+
+      <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1">
+        {events.map((e) => <EventRow key={e.id} event={e} />)}
+        <div className="mt-2 text-[9px] tracking-[0.18em] text-center py-2" style={{ color: 'var(--hud-text-dim)' }}>
+          [ {badge === 'WS LIVE' ? '/ws/events · realtime'
+            : badge === 'HTTP LIVE' ? '/v1/logs · 4s poll'
+            : 'mock seed (no source)'} ]
+        </div>
       </div>
 
-      {/* ── Chat tab ─────────────────────────────── */}
-      {tab === 'chat' && (
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <ChatArea />
-        </div>
-      )}
-
-      {/* ── Events tab ───────────────────────────── */}
-      {tab === 'events' && (
-        <>
-          <EventsHeader badge={badge} wsState={ws.state} />
-          <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1">
-            {events.map((e) => <EventRow key={e.id} event={e} />)}
-            <div
-              className="mt-2 text-[9px] tracking-[0.18em] text-center py-2"
-              style={{ color: 'var(--hud-text-dim)' }}
-            >
-              [{badge === 'WS LIVE'   ? '/ws/events · realtime'
-                : badge === 'HTTP LIVE' ? '/v1/logs · 4s poll'
-                : 'mock seed (no source)'}]
-            </div>
-          </div>
-
-          {/* Quick stats */}
-          <div
-            className="shrink-0 px-3 py-2 text-[9px] font-bold tracking-[0.25em]"
-            style={{
-              color: 'var(--hud-text-dim)',
-              background: 'rgba(0,0,0,0.2)',
-              borderTop: '1px solid var(--hud-border)',
-              borderBottom: '1px solid var(--hud-border)',
-            }}
-          >
-            ── QUICK STATS
-          </div>
-          <div className="grid grid-cols-2 gap-2 p-3 shrink-0">
-            <StatBox label="MISSIONS"   value={String(jobs.length)}  colorKey="forge" />
-            <StatBox label="AGENTS"     value={String(onlineAgents)} colorKey="jarvis" />
-            <StatBox label="ACTIVE JOB" value={String(activeJobs)}   colorKey="vault" />
-            <StatBox label="ALERTS"     value={String(alerts)}       colorKey="cyberdeck" pulse={alerts > 0} />
-          </div>
-        </>
-      )}
+      <SectionHeader title="QUICK STATS" border="top" />
+      <div className="grid grid-cols-2 gap-2 p-3">
+        <StatBox label="MISSIONS"   value={String(jobs.length)}    colorKey="forge" />
+        <StatBox label="AGENTS"     value={String(onlineAgents)}   colorKey="jarvis" />
+        <StatBox label="ACTIVE JOB" value={String(activeJobs)}     colorKey="vault" />
+        <StatBox label="ALERTS"     value={String(alerts)}         colorKey="cyberdeck" pulse={alerts > 0} />
+      </div>
     </aside>
   );
 }
 
-// ─── Tab button ────────────────────────────────────────────────────────────
-
-function TabBtn({
-  icon: Icon, label, active, onClick, color, badge,
-}: {
-  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  color: string;
-  badge?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[9px] font-bold tracking-[0.22em] cursor-pointer transition-colors"
-      style={{
-        color:       active ? color : 'var(--hud-text-dim)',
-        borderBottom: active ? `2px solid ${color}` : '2px solid transparent',
-        background:   active ? 'rgba(0,0,0,0.15)' : 'transparent',
-      }}
-    >
-      <Icon size={11} style={{ color }} />
-      {label}
-      {badge && (
-        <span
-          className="px-1 text-[8px]"
-          style={{ color: 'var(--color-cyberdeck)', border: '1px solid var(--color-cyberdeck)' }}
-        >
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-// ─── Events header ─────────────────────────────────────────────────────────
-
-function EventsHeader({
-  badge, wsState,
-}: {
-  badge: 'WS LIVE' | 'HTTP LIVE' | 'MOCK';
-  wsState: 'connecting' | 'open' | 'closed' | 'error';
-}) {
-  const palette: Record<string, string> = {
-    'WS LIVE':   'var(--color-docker)',
-    'HTTP LIVE': 'var(--color-jarvis)',
-    'MOCK':      'var(--hud-text-dim)',
-  };
-  const c = palette[badge];
-  return (
-    <div
-      className="px-3 py-2 text-[9px] font-bold tracking-[0.25em] flex items-center gap-2 shrink-0"
-      style={{
-        color: 'var(--hud-text-dim)',
-        background: 'rgba(0,0,0,0.2)',
-        borderBottom: '1px solid var(--hud-border)',
-      }}
-    >
-      <span>── ALERTS & EVENTS</span>
-      <span
-        className="ml-auto px-1.5 py-0.5 flex items-center gap-1"
-        style={{ color: c, border: `1px solid ${c}`, fontSize: 8 }}
-      >
-        {wsState !== 'open' && badge === 'WS LIVE' && (
-          <span className="w-1 h-1 rounded-full" style={{ background: 'var(--color-security)' }} />
-        )}
-        {badge}
-      </span>
-    </div>
-  );
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 function normalizeLevel(raw: unknown): Event['level'] {
   const s = String(raw ?? 'info').toLowerCase();
   if (s === 'error' || s === 'alert' || s === 'critical') return 'alert';
-  if (s === 'warn' || s === 'warning') return 'warn';
+  if (s === 'warn'  || s === 'warning') return 'warn';
   return 'info';
 }
 
@@ -238,6 +113,46 @@ function mapWs(events: WsEvent[]): Event[] {
   }));
 }
 
+function SectionHeader({
+  title, badge, border = 'bottom', wsState,
+}: {
+  title: string;
+  badge?: 'WS LIVE' | 'HTTP LIVE' | 'MOCK';
+  border?: 'top' | 'bottom';
+  wsState?: 'connecting' | 'open' | 'closed' | 'error';
+}) {
+  const palette: Record<string, string> = {
+    'WS LIVE':   'var(--color-docker)',
+    'HTTP LIVE': 'var(--color-jarvis)',
+    'MOCK':      'var(--hud-text-dim)',
+  };
+  const c = badge ? palette[badge] : 'var(--hud-text-dim)';
+  return (
+    <div
+      className="px-3 py-2 text-[9px] font-bold tracking-[0.25em] flex items-center gap-2"
+      style={{
+        color: 'var(--hud-text-dim)',
+        background: 'rgba(0,0,0,0.2)',
+        borderTop:    border === 'top'    ? '1px solid var(--hud-border)' : undefined,
+        borderBottom: border === 'bottom' ? '1px solid var(--hud-border)' : undefined,
+      }}
+    >
+      <span>── {title}</span>
+      {badge && (
+        <span
+          className="ml-auto px-1.5 py-0.5 flex items-center gap-1"
+          style={{ color: c, border: `1px solid ${c}`, fontSize: 8 }}
+        >
+          {wsState && wsState !== 'open' && badge === 'WS LIVE' && (
+            <span className="w-1 h-1 rounded-full" style={{ background: 'var(--color-security)' }} />
+          )}
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function EventRow({ event }: { event: Event }) {
   const palette = {
     info:  { c: 'var(--color-jarvis)',    Icon: Info },
@@ -250,12 +165,12 @@ function EventRow({ event }: { event: Event }) {
     <motion.div
       className="flex items-start gap-2 px-2 py-1.5 text-[10px] leading-tight"
       style={{ borderLeft: `2px solid ${c}`, background: 'rgba(0,0,0,0.18)' }}
-      initial={isAlert ? { boxShadow: 'inset 0 0 0 0 transparent' } : false}
+      initial={isAlert ? { boxShadow: `inset 0 0 0 0 transparent` } : false}
       animate={isAlert ? {
         boxShadow: [
-          'inset 0 0 0 0 transparent',
+          `inset 0 0 0 0 transparent`,
           `inset 0 0 12px 0 ${c}`,
-          'inset 0 0 0 0 transparent',
+          `inset 0 0 0 0 transparent`,
         ],
       } : undefined}
       transition={isAlert ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } : undefined}
@@ -283,7 +198,7 @@ function StatBox({
       className="flex flex-col items-start px-2 py-2"
       style={{ background: 'rgba(0,0,0,0.18)', border: `1px solid ${c}`, borderRadius: 2 }}
       animate={pulse ? {
-        boxShadow: ['0 0 0 0 transparent', `0 0 14px -2px ${c}`, '0 0 0 0 transparent'],
+        boxShadow: [`0 0 0 0 transparent`, `0 0 14px -2px ${c}`, `0 0 0 0 transparent`],
       } : undefined}
       transition={pulse ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
     >
