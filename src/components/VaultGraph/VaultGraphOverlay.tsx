@@ -75,7 +75,8 @@ const BG           = '#0a0a0f';
 export function VaultGraphOverlay({ open, onClose }: VaultGraphOverlayProps) {
   const { graph, state, error } = useVaultGraph({ enabled: open });
   const { width, height } = useFullscreenSize();
-  const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fgRef = useRef<any>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
 
   // Decoration calculee une seule fois par snapshot.
@@ -320,4 +321,13 @@ export function VaultGraphOverlay({ open, onClose }: VaultGraphOverlayProps) {
               color: 'rgba(255,255,255,0.45)',
               fontSize: 11,
               letterSpacing: '0.25em',
+            }}
+          >
+            {state === 'connecting' ? 'CONNECTING TO VAULT…' : 'VAULT OFFLINE · START vault_graph SERVICE'}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
         

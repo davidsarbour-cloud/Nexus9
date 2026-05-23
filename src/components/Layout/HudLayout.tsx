@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { TopBar } from './TopBar';
 import { HudSidebar } from './HudSidebar';
@@ -5,6 +6,7 @@ import { RightPanel } from './RightPanel';
 import { BottomPanel } from './BottomPanel';
 import { AlertBanner, useAlertGc } from '../../systems/alerts';
 import { TacticalOverlay } from '../../systems/TacticalOverlay';
+import { VaultGraphOverlay } from '../VaultGraph';
 
 /**
  * HudLayout — tactical 5-zone command bridge layout.
@@ -29,6 +31,7 @@ import { TacticalOverlay } from '../../systems/TacticalOverlay';
 export function HudLayout() {
   const location = useLocation();
   const isOrbital = location.pathname.startsWith('/orbital');
+  const [vaultGraphOpen, setVaultGraphOpen] = useState(false);
   useAlertGc(); // prune acknowledged alerts > 5min, once per HUD mount
 
   return (
@@ -50,7 +53,9 @@ export function HudLayout() {
 
       <div className="flex flex-1 min-h-0 relative">
         {/* Left sidebar — hidden on the orbital view to maximise canvas */}
-        {!isOrbital && <HudSidebar />}
+        {!isOrbital && (
+          <HudSidebar onOpenVaultGraph={() => setVaultGraphOpen(true)} />
+        )}
 
         {/* Central viewport */}
         <main
@@ -63,16 +68,22 @@ export function HudLayout() {
           <Outlet />
         </main>
 
-        {/* Right panel — alerts + events. Hidden on orbital. */}
+        {/* Right panel — chat + quick stats. Hidden on orbital. */}
         {!isOrbital && <RightPanel />}
       </div>
 
-      {/* Bottom strip — graphs / quick stats. Hidden on orbital. */}
+      {/* Bottom strip — hardware resource bars. Hidden on orbital. */}
       {!isOrbital && <BottomPanel />}
 
       {/* Tactical polish — scanlines + vignette + radar sweep.
           Radar disabled on /orbital (3D scene already provides motion). */}
       <TacticalOverlay radar={!isOrbital} />
+
+      {/* Vault graph overlay — triggered from sidebar or orbital Vault planet */}
+      <VaultGraphOverlay
+        open={vaultGraphOpen}
+        onClose={() => setVaultGraphOpen(false)}
+      />
     </div>
   );
 }

@@ -14,6 +14,8 @@ type Entry = {
   route?: string;        // optional navigation
   external?: string;     // open in new tab
   status?: 'on' | 'off' | 'warn';
+  /** If true, clicking opens the Vault Graph overlay instead of navigating. */
+  vaultGraph?: boolean;
 };
 
 type Section = {
@@ -55,7 +57,7 @@ const SECTIONS: Section[] = [
   {
     title: 'TOOLS',
     entries: [
-      { label: 'Obsidian',    icon: BookOpen, colorKey: 'vault',    external: 'http://localhost:8081', status: 'on' },
+      { label: 'Obsidian',    icon: BookOpen, colorKey: 'vault',    vaultGraph: true, status: 'on' },
       { label: 'Superpowers', icon: Sparkles, colorKey: 'forge',    external: 'http://localhost:8082', status: 'on' },
       { label: 'OpenHands',   icon: Workflow, colorKey: 'commerce', external: 'http://localhost:3000', status: 'on' },
       { label: 'Chat',        icon: MessageSquare, colorKey: 'jarvis', route: '/chat', status: 'on' },
@@ -67,8 +69,9 @@ const SECTIONS: Section[] = [
  * HudSidebar — left tactical nav, fixed width 240px.
  * 4 sections: VIEWS / AI ENTITIES / SYSTEMS / TOOLS.
  * External entries open in new tab; route entries navigate inside React.
+ * `onOpenVaultGraph` triggers the Vault Graph overlay from the parent layout.
  */
-export function HudSidebar() {
+export function HudSidebar({ onOpenVaultGraph }: { onOpenVaultGraph?: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -98,7 +101,9 @@ export function HudSidebar() {
               const color = entry.colorKey ? cssVar(entry.colorKey) : 'var(--hud-text)';
               const isActive = entry.route && location.pathname === entry.route;
               const handleClick = () => {
-                if (entry.external) {
+                if (entry.vaultGraph) {
+                  onOpenVaultGraph?.();
+                } else if (entry.external) {
                   window.open(entry.external, '_blank', 'noopener,noreferrer');
                 } else if (entry.route) {
                   navigate(entry.route);
