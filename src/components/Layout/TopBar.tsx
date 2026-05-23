@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Hexagon, Orbit, LayoutDashboard, Activity } from 'lucide-react';
+import { Hexagon, Orbit, LayoutDashboard, Activity, MessageSquare, Brain } from 'lucide-react';
 
 type Pill = {
   label: string;
@@ -17,7 +17,9 @@ export function TopBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isOrbital = location.pathname.startsWith('/orbital');
-  const isCommand = !isOrbital;
+  const isChat    = location.pathname.startsWith('/chat');
+  const isBrain   = location.pathname.startsWith('/brain');
+  const isCommand = !isOrbital && !isChat && !isBrain;
 
   const [now, setNow] = useState<string>(() => formatClock(new Date()));
   useEffect(() => {
@@ -62,28 +64,20 @@ export function TopBar() {
             className="text-[9px] tracking-[0.22em] mt-0.5"
             style={{ color: 'var(--hud-text-dim)' }}
           >
-            {isOrbital ? 'ORBITAL INTERFACE' : 'COMMAND CENTER'}
+            {isOrbital ? 'ORBITAL INTERFACE' : isChat ? 'JARVIS CHAT' : isBrain ? 'BRAIN HUB' : 'COMMAND CENTER'}
           </span>
         </div>
       </div>
 
-      {/* MID — switch */}
+      {/* MID — view switcher */}
       <div
         className="flex items-stretch rounded-sm overflow-hidden"
         style={{ border: '1px solid var(--hud-border)' }}
       >
-        <ViewButton
-          active={isCommand}
-          icon={<LayoutDashboard size={13} />}
-          label="COMMAND CENTER"
-          onClick={() => navigate('/')}
-        />
-        <ViewButton
-          active={isOrbital}
-          icon={<Orbit size={13} />}
-          label="ORBITAL VIEW"
-          onClick={() => navigate('/orbital')}
-        />
+        <ViewButton active={isCommand} icon={<LayoutDashboard size={13} />} label="COMMAND CENTER" onClick={() => navigate('/')} />
+        <ViewButton active={isChat}    icon={<MessageSquare   size={13} />} label="CHAT"           onClick={() => navigate('/chat')} />
+        <ViewButton active={isBrain}   icon={<Brain           size={13} />} label="BRAIN HUB"      onClick={() => navigate('/brain')} />
+        <ViewButton active={isOrbital} icon={<Orbit           size={13} />} label="ORBITAL VIEW"   onClick={() => navigate('/orbital')} />
       </div>
 
       {/* RIGHT — pills + clock */}
@@ -128,7 +122,7 @@ function ViewButton({
         color: active ? 'var(--hud-bg)' : 'var(--hud-text)',
         background: active ? 'var(--color-jarvis)' : 'transparent',
         boxShadow: active ? '0 0 12px var(--color-jarvis-glow)' : 'none',
-        minWidth: 160,
+        minWidth: 120,
         justifyContent: 'center',
       }}
       onMouseEnter={(e) => {

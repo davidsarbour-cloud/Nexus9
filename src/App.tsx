@@ -179,6 +179,7 @@ export default function App() {
       <Routes>
         <Route element={<HudLayout />}>
           <Route index element={<CommandCenterPage />} />
+          <Route path="chat" element={<ChatPage />} />
           <Route path="orbital" element={<OrbitalPage />} />
           <Route path="brain" element={<BrainHubPage />} />
           <Route
