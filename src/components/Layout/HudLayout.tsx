@@ -31,6 +31,10 @@ import { VaultGraphOverlay } from '../VaultGraph';
 export function HudLayout() {
   const location = useLocation();
   const isOrbital = location.pathname.startsWith('/orbital');
+  const isChat    = location.pathname.startsWith('/chat');
+  const isBrain   = location.pathname.startsWith('/brain');
+  // Chat and Brain Hub pages have their own full-width layout — hide side panels
+  const isFullWidth = isChat || isBrain;
   const [vaultGraphOpen, setVaultGraphOpen] = useState(false);
   useAlertGc(); // prune acknowledged alerts > 5min, once per HUD mount
 
@@ -52,8 +56,8 @@ export function HudLayout() {
       <TopBar />
 
       <div className="flex flex-1 min-h-0 relative">
-        {/* Left sidebar — hidden on the orbital view to maximise canvas */}
-        {!isOrbital && (
+        {/* Left sidebar — hidden on orbital + full-width pages */}
+        {!isOrbital && !isFullWidth && (
           <HudSidebar onOpenVaultGraph={() => setVaultGraphOpen(true)} />
         )}
 
@@ -61,19 +65,19 @@ export function HudLayout() {
         <main
           className="flex-1 flex flex-col min-w-0 min-h-0 relative overflow-hidden"
           style={{
-            borderLeft: !isOrbital ? '1px solid var(--hud-border)' : 'none',
-            borderRight: !isOrbital ? '1px solid var(--hud-border)' : 'none',
+            borderLeft: (!isOrbital && !isFullWidth) ? '1px solid var(--hud-border)' : 'none',
+            borderRight: (!isOrbital && !isFullWidth) ? '1px solid var(--hud-border)' : 'none',
           }}
         >
           <Outlet />
         </main>
 
-        {/* Right panel — chat + quick stats. Hidden on orbital. */}
-        {!isOrbital && <RightPanel />}
+        {/* Right panel — quick stats. Hidden on orbital + full-width pages. */}
+        {!isOrbital && !isFullWidth && <RightPanel />}
       </div>
 
-      {/* Bottom strip — hardware resource bars. Hidden on orbital. */}
-      {!isOrbital && <BottomPanel />}
+      {/* Bottom strip — hardware resource bars. Hidden on orbital + full-width pages. */}
+      {!isOrbital && !isFullWidth && <BottomPanel />}
 
       {/* Tactical polish — scanlines + vignette + radar sweep.
           Radar disabled on /orbital (3D scene already provides motion). */}
